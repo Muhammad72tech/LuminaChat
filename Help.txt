@@ -1,0 +1,11 @@
+In the name of God
+
+LuminaChat
+
+
+PHP version: +8
+
+user: admim
+password: admin123
+
+clean this file and change password.
