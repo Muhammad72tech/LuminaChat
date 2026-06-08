@@ -53,7 +53,7 @@ function getSetting($key) { global $db; $s=$db->prepare("SELECT value FROM setti
 $action = $_GET['action'] ?? 'home';
 $response = ['error'=>''];
 
-// Logout action
+// Logout action - اضافه شد
 if ($action === 'logout' && isLoggedIn()) {
     session_destroy();
     header('Location: index.php');
@@ -75,14 +75,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['avatar'] = $user['avatar'];
             $_SESSION['role'] = $user['role'];
             header('Location: index.php'); exit;
-        } else { $response['error'] = 'Username or password is incorrect'; }
+        } else { $response['error'] = 'نام کاربری یا رمز عبور اشتباه است'; }
     } elseif ($action === 'register') {
-        if (!getSetting('allow_registration')) { $response['error'] = 'Registration is disabled'; }
+        if (!getSetting('allow_registration')) { $response['error'] = 'ثبت نام غیرفعال است'; }
         else {
             $u = trim($_POST['username'] ?? '');
             $p = $_POST['password'] ?? '';
             $dn = trim($_POST['display_name'] ?? '');
-            if (strlen($u)<3 || strlen($p)<4) { $response['error'] = 'Username must be at least 3 characters and password at least 4 characters'; }
+            if (strlen($u)<3 || strlen($p)<4) { $response['error'] = 'نام کاربری حداقل ۳ و رمز حداقل ۴ کاراکتر'; }
             else {
                 $hash = password_hash($p, PASSWORD_DEFAULT);
                 try {
@@ -94,7 +94,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $_SESSION['avatar'] = null;
                     $_SESSION['role'] = 'user';
                     header('Location: index.php'); exit;
-                } catch(PDOException $e) { $response['error'] = 'Username already exists'; }
+                } catch(PDOException $e) { $response['error'] = 'نام کاربری تکراری است'; }
             }
         }
     } elseif ($action === 'change_password' && isLoggedIn()) {
@@ -103,19 +103,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt = $db->prepare("SELECT password FROM users WHERE id=?");
         $stmt->execute([$_SESSION['user_id']]);
         $row = $stmt->fetch();
-        if (!password_verify($old, $row['password'])) { $response['error'] = 'Current password is incorrect'; }
-        elseif (strlen($new)<4) { $response['error'] = 'New password must be at least 4 characters'; }
+        if (!password_verify($old, $row['password'])) { $response['error'] = 'رمز فعلی اشتباه است'; }
+        elseif (strlen($new)<4) { $response['error'] = 'رمز جدید حداقل ۴ کاراکتر'; }
         else {
             $db->prepare("UPDATE users SET password=? WHERE id=?")->execute([password_hash($new,PASSWORD_DEFAULT), $_SESSION['user_id']]);
-            $response['success'] = 'Password changed successfully';
+            $response['success'] = 'رمز با موفقیت تغییر کرد';
         }
     } elseif ($action === 'update_profile' && isLoggedIn()) {
         $dn = trim($_POST['display_name'] ?? '');
         // Handle avatar upload
         if (isset($_FILES['avatar']) && $_FILES['avatar']['error'] === UPLOAD_ERR_OK) {
             $ext = strtolower(pathinfo($_FILES['avatar']['name'], PATHINFO_EXTENSION));
-            if (!in_array($ext, ['jpg','jpeg','png','gif','webp'])) { $response['error'] = 'Allowed formats: jpg, png, gif, webp'; }
-            elseif ($_FILES['avatar']['size'] > 512000) { $response['error'] = 'Avatar size must be maximum 500 KB'; }
+            if (!in_array($ext, ['jpg','jpeg','png','gif','webp'])) { $response['error'] = 'فرمت مجاز: jpg,png,gif,webp'; }
+            elseif ($_FILES['avatar']['size'] > 512000) { $response['error'] = 'حجم آواتار حداکثر ۵۰۰ کیلوبایت'; }
             else {
                 $avatarName = 'avatar_'.$_SESSION['user_id'].'_'.time().'.'.$ext;
                 move_uploaded_file($_FILES['avatar']['tmp_name'], 'uploads/'.$avatarName);
@@ -129,11 +129,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                ->execute([$dn ?: null, $_SESSION['user_id']]);
             $_SESSION['display_name'] = $dn ?: $_SESSION['username'];
         }
-        if (!$response['error']) $response['success'] = 'Profile updated successfully';
+        if (!$response['error']) $response['success'] = 'پروفایل به‌روز شد';
     } elseif ($action === 'create_group' && isLoggedIn()) {
         $name = trim($_POST['name'] ?? '');
         $type = $_POST['type'] ?? 'group';
-        if (strlen($name)<1) { $response['error'] = 'Name is required'; }
+        if (strlen($name)<1) { $response['error'] = 'نام الزامی است'; }
         else {
             $db->prepare("INSERT INTO groups (name,type,creator_id) VALUES (?,?,?)")->execute([$name,$type,$_SESSION['user_id']]);
             $gid = $db->lastInsertId();
@@ -146,15 +146,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Check membership
         $mem = $db->prepare("SELECT 1 FROM group_members WHERE user_id=? AND group_id=?");
         $mem->execute([$_SESSION['user_id'],$gid]);
-        if (!$mem->fetch()) { $response['error'] = 'You are not a member of this group'; }
+        if (!$mem->fetch()) { $response['error'] = 'شما عضو این گروه نیستید'; }
         else {
             $fileData = null;
             if (isset($_FILES['file']) && $_FILES['file']['error'] === UPLOAD_ERR_OK) {
                 $allowedExts = ['jpg','jpeg','png','gif','webp','mp4','webm','ogg','mp3','wav','zip','rar','pdf'];
                 $ext = strtolower(pathinfo($_FILES['file']['name'], PATHINFO_EXTENSION));
                 $maxSize = (int)getSetting('max_upload_size');
-                if (!in_array($ext, $allowedExts)) { $response['error'] = 'File format not allowed'; }
-                elseif ($_FILES['file']['size'] > $maxSize) { $response['error'] = 'File size exceeds maximum allowed ('.round($maxSize/1048576,1).' MB)'; }
+                if (!in_array($ext, $allowedExts)) { $response['error'] = 'فرمت فایل مجاز نیست'; }
+                elseif ($_FILES['file']['size'] > $maxSize) { $response['error'] = 'حجم فایل بیش از حد مجاز ('.round($maxSize/1048576,1).' مگابایت)'; }
                 else {
                     $fileName = 'file_'.time().'_'.bin2hex(random_bytes(4)).'.'.$ext;
                     move_uploaded_file($_FILES['file']['tmp_name'], 'uploads/'.$fileName);
@@ -184,10 +184,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             $db->prepare("INSERT OR REPLACE INTO settings (key,value) VALUES ('allow_registration','0')")->execute();
         }
-        $response['success'] = 'Settings saved';
+        $response['success'] = 'تنظیمات ذخیره شد';
     } elseif ($action === 'admin_delete_user' && isAdmin()) {
         $uid = (int)($_POST['user_id'] ?? 0);
-        if ($uid === (int)$_SESSION['user_id']) { $response['error'] = 'You cannot delete yourself'; }
+        if ($uid === (int)$_SESSION['user_id']) { $response['error'] = 'نمی‌توانید خود را حذف کنید'; }
         else { $db->prepare("DELETE FROM users WHERE id=?")->execute([$uid]); }
     } elseif ($action === 'admin_edit_user' && isAdmin()) {
         $uid = (int)($_POST['user_id'] ?? 0);
@@ -205,11 +205,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($name) $db->prepare("UPDATE groups SET name=?, sort_order=? WHERE id=?")->execute([$name, $sort, $gid]);
     } elseif ($action === 'join_group' && isLoggedIn()) {
         $gid = (int)($_POST['group_id'] ?? 0);
-        // Allow anyone to join both groups and channels
+        // تغییر: همه می‌توانند به کانال و گروه بپیوندند
         $db->prepare("INSERT OR IGNORE INTO group_members (user_id,group_id) VALUES (?,?)")->execute([$_SESSION['user_id'], $gid]);
     } elseif ($action === 'leave_group' && isLoggedIn()) {
         $gid = (int)($_POST['group_id'] ?? 0);
-        // Cannot leave if last admin? Fallback: allow leave
         $db->prepare("DELETE FROM group_members WHERE user_id=? AND group_id=?")->execute([$_SESSION['user_id'], $gid]);
     }
     // Redirect to avoid resubmission
@@ -224,11 +223,11 @@ if (!isLoggedIn() && $action !== 'login' && $action !== 'register') $action = 'l
 $currentGroup = isset($_GET['group']) ? (int)$_GET['group'] : 0;
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html dir="rtl" lang="fa">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lumina Chat</title>
+    <title>لومینا چت</title>
     <link rel="icon" href="favico.png"/>
     <link rel="stylesheet" href="style.css">
 </head>
@@ -237,39 +236,39 @@ $currentGroup = isset($_GET['group']) ? (int)$_GET['group'] : 0;
         <!-- Sidebar -->
         <aside id="sidebar">
             <div class="sidebar-header">
-                <h2>Lumina Chat</h2>
+                <h2>لومینا چت</h2>
                 <button id="close-sidebar">✕</button>
             </div>
             <?php if (isLoggedIn()): ?>
             <div class="user-info">
                 <img src="<?= $_SESSION['avatar'] ? 'uploads/'.htmlspecialchars($_SESSION['avatar']) : 'default-avatar.png' ?>" class="avatar-sm">
                 <span><?= htmlspecialchars($_SESSION['display_name']) ?></span>
-                <a href="index.php?action=profile" class="btn-small">Edit</a>
+                <a href="index.php?action=profile" class="btn-small">ویرایش</a>
             </div>
             <nav>
-                <a href="index.php" class="nav-link">Home</a>
-                <a href="index.php?action=groups" class="nav-link">Groups</a>
+                <a href="index.php" class="nav-link">خانه</a>
+                <a href="index.php?action=groups" class="nav-link">گروه‌ها</a>
                 <?php if (isAdmin()): ?>
-                    <a href="index.php?action=admin" class="nav-link">Admin</a>
+                    <a href="index.php?action=admin" class="nav-link">مدیریت</a>
                 <?php endif; ?>
-                <a href="index.php?action=logout" class="nav-link">Logout</a>
+                <a href="index.php?action=logout" class="nav-link">خروج</a>
             </nav>
             <?php endif; ?>
             
-            <!-- My Channels & Groups Section in Sidebar -->
+            <!-- بخش کانال‌ها و گروه‌های من در منوی کناری -->
             <div class="group-list">
                 <?php if (isLoggedIn()):
-                    // Get user's channels
+                    // دریافت کانال‌های کاربر
                     $channels = $db->prepare("SELECT g.*, (SELECT COUNT(*) FROM group_members WHERE group_id=g.id) as member_count FROM groups g JOIN group_members m ON g.id=m.group_id WHERE m.user_id=? AND g.type='channel' ORDER BY g.sort_order, g.name");
                     $channels->execute([$_SESSION['user_id']]);
                     
-                    // Get user's groups
+                    // دریافت گروه‌های کاربر
                     $groups = $db->prepare("SELECT g.*, (SELECT COUNT(*) FROM group_members WHERE group_id=g.id) as member_count FROM groups g JOIN group_members m ON g.id=m.group_id WHERE m.user_id=? AND g.type='group' ORDER BY g.sort_order, g.name");
                     $groups->execute([$_SESSION['user_id']]);
-                    
-                    // Display Channels section (always show)
                     ?>
-                    <h3>My Channels</h3>
+                    
+                    <!-- بخش کانال‌ها -->
+                    <h3>کانال‌های من</h3>
                     <?php 
                     $hasChannels = false;
                     foreach ($channels as $g):
@@ -281,12 +280,12 @@ $currentGroup = isset($_GET['group']) ? (int)$_GET['group'] : 0;
                         </a>
                     <?php endforeach; ?>
                     <?php if (!$hasChannels): ?>
-                        <p class="empty-message" style="font-size:0.8em; color:#888; padding:5px 10px;">No channels joined yet.</p>
+                        <p style="font-size:0.8em; color:#888; padding:5px 10px;">هنوز به کانالی نپیوسته‌اید.</p>
                     <?php endif;
                     
-                    // Display Groups section (always show)
+                    // بخش گروه‌ها
                     ?>
-                    <h3>My Groups</h3>
+                    <h3>گروه‌های من</h3>
                     <?php 
                     $hasGroups = false;
                     foreach ($groups as $g):
@@ -298,7 +297,7 @@ $currentGroup = isset($_GET['group']) ? (int)$_GET['group'] : 0;
                         </a>
                     <?php endforeach; ?>
                     <?php if (!$hasGroups): ?>
-                        <p class="empty-message" style="font-size:0.8em; color:#888; padding:5px 10px;">No groups joined yet.</p>
+                        <p style="font-size:0.8em; color:#888; padding:5px 10px;">هنوز به گروهی نپیوسته‌اید.</p>
                     <?php endif;
                 endif; ?>
             </div>
@@ -314,14 +313,14 @@ $currentGroup = isset($_GET['group']) ? (int)$_GET['group'] : 0;
                     $g = $grp->fetch();
                     if ($g): ?>
                         <h1><?= htmlspecialchars($g['name']) ?></h1>
-                        <span class="group-type"><?= $g['type'] === 'channel' ? 'Channel' : 'Group' ?></span>
+                        <span class="group-type"><?= $g['type'] === 'channel' ? 'کانال' : 'گروه' ?></span>
                     <?php endif; ?>
                 <?php else: ?>
-                    <h1>Welcome</h1>
+                    <h1>خوش آمدید</h1>
                 <?php endif; ?>
                 <?php if (isLoggedIn()): ?>
                 <div class="topbar-actions">
-                    <a href="" id="renew-message"><strong>🔄 Refresh</strong></a>
+                    <a href="" id="renew-message"><strong>🔄 بروزرسانی</strong></a>
                 </div>
                 <div class="topbar-actions">
                     <button id="theme-toggle">🌙</button>
@@ -333,78 +332,78 @@ $currentGroup = isset($_GET['group']) ? (int)$_GET['group'] : 0;
                 <?php if (!isLoggedIn() && $action === 'login'): ?>
                     <!-- Login form -->
                     <div class="auth-form">
-                        <h2>Login</h2>
+                        <h2>ورود</h2>
                         <?php if ($response['error']): ?><div class="error"><?= $response['error'] ?></div><?php endif; ?>
                         <form method="post" action="index.php?action=login">
-                            <input type="text" name="username" placeholder="Username" required>
-                            <input type="password" name="password" placeholder="Password" required>
-                            <button type="submit">Login</button>
+                            <input type="text" name="username" placeholder="نام کاربری" required>
+                            <input type="password" name="password" placeholder="رمز عبور" required>
+                            <button type="submit">ورود</button>
                         </form>
-                        <a href="index.php?action=register">Register</a>
+                        <a href="index.php?action=register">ثبت نام</a>
                     </div>
                 <?php elseif (!isLoggedIn() && $action === 'register'): ?>
                     <div class="auth-form">
-                        <h2>Register</h2>
+                        <h2>ثبت نام</h2>
                         <?php if ($response['error']): ?><div class="error"><?= $response['error'] ?></div><?php endif; ?>
                         <form method="post" action="index.php?action=register">
-                            <input type="text" name="username" placeholder="Username" required>
-                            <input type="password" name="password" placeholder="Password" required>
-                            <input type="text" name="display_name" placeholder="Display Name (Optional)">
-                            <button type="submit">Register</button>
+                            <input type="text" name="username" placeholder="نام کاربری" required>
+                            <input type="password" name="password" placeholder="رمز عبور" required>
+                            <input type="text" name="display_name" placeholder="نام نمایشی (اختیاری)">
+                            <button type="submit">ثبت نام</button>
                         </form>
-                        <a href="index.php?action=login">Login</a>
+                        <a href="index.php?action=login">ورود</a>
                     </div>
                 <?php elseif ($action === 'profile' && isLoggedIn()): ?>
     <div class="profile-page">
-        <h2>Profile</h2>
+        <h2>پروفایل</h2>
         <?php if ($response['error']): ?><div class="error"><?= $response['error'] ?></div><?php endif; ?>
         <?php if (isset($response['success'])): ?><div class="success"><?= $response['success'] ?></div><?php endif; ?>
         
         <form method="post" action="index.php?action=update_profile" enctype="multipart/form-data" class="profile-form">
-            <label>Avatar (Max 500 KB)</label>
+            <label>آواتار (حداکثر ۵۰۰ کیلوبایت)</label>
             <input type="file" name="avatar" accept="image/*">
-            <label>Display Name</label>
-            <input type="text" name="display_name" value="<?= htmlspecialchars($_SESSION['display_name'] ?? '') ?>" placeholder="Display Name">
-            <button type="submit">Save</button>
+            <label>نام نمایشی</label>
+            <input type="text" name="display_name" value="<?= htmlspecialchars($_SESSION['display_name'] ?? '') ?>" placeholder="نام نمایشی">
+            <button type="submit">ذخیره</button>
         </form>
         
         <hr>
-        <h3>Change Password</h3>
+        <h3>تغییر رمز عبور</h3>
         <form method="post" action="index.php?action=change_password" class="profile-form">
-            <input type="password" name="old_password" placeholder="Current Password" required>
-            <input type="password" name="new_password" placeholder="New Password" required>
-            <button type="submit">Change Password</button>
+            <input type="password" name="old_password" placeholder="رمز فعلی" required>
+            <input type="password" name="new_password" placeholder="رمز جدید" required>
+            <button type="submit">تغییر رمز</button>
         </form>
     </div>
 
 <?php elseif ($action === 'groups' && isLoggedIn()): ?>
     <div class="groups-page">
-        <h2>Groups & Channels</h2>
+        <h2>گروه‌ها و کانال‌ها</h2>
         <?php if ($response['error']): ?><div class="error"><?= $response['error'] ?></div><?php endif; ?>
         
         <div class="create-group-form">
-            <h3>Create New Group or Channel</h3>
+            <h3>ساخت گروه یا کانال جدید</h3>
             <form method="post" action="index.php?action=create_group">
-                <input type="text" name="name" placeholder="Group/Channel Name" required>
+                <input type="text" name="name" placeholder="نام گروه/کانال" required>
                 <select name="type">
-                    <option value="group">Group</option>
-                    <option value="channel">Channel</option>
+                    <option value="group">گروه</option>
+                    <option value="channel">کانال</option>
                 </select>
-                <button type="submit">Create</button>
+                <button type="submit">ساخت</button>
             </form>
         </div>
         
         <hr>
         
-        <!-- All Channels Section -->
+        <!-- بخش همه کانال‌ها -->
         <div class="group-list-all">
-            <h3>All Channels</h3>
+            <h3>همه کانال‌ها</h3>
             <?php 
             $allChannels = $db->query("SELECT g.*, (SELECT COUNT(*) FROM group_members WHERE group_id=g.id) as member_count FROM groups g WHERE g.type='channel' ORDER BY g.sort_order, g.name");
             $hasChannels = false;
             foreach ($allChannels as $g):
                 $hasChannels = true;
-                // Check membership
+                // بررسی عضویت
                 $check = $db->prepare("SELECT 1 FROM group_members WHERE user_id=? AND group_id=?");
                 $check->execute([$_SESSION['user_id'], $g['id']]);
                 $isMember = $check->fetch();
@@ -412,39 +411,39 @@ $currentGroup = isset($_GET['group']) ? (int)$_GET['group'] : 0;
             <div class="group-card">
                 <div>
                     <strong># <?= htmlspecialchars($g['name']) ?></strong>
-                    <span class="badge">Channel</span>
-                    <span class="member-count"><?= $g['member_count'] ?> members</span>
+                    <span class="badge">کانال</span>
+                    <span class="member-count"><?= $g['member_count'] ?> عضو</span>
                 </div>
                 <div>
                     <?php if ($isMember): ?>
                         <form method="post" action="index.php?action=leave_group" style="display:inline">
                             <input type="hidden" name="group_id" value="<?= $g['id'] ?>">
-                            <button type="submit" class="btn-small btn-danger">Leave</button>
+                            <button type="submit" class="btn-small btn-danger">خروج</button>
                         </form>
-                        <a href="index.php?group=<?= $g['id'] ?>" class="btn-small">Enter</a>
+                        <a href="index.php?group=<?= $g['id'] ?>" class="btn-small">ورود</a>
                     <?php else: ?>
                         <form method="post" action="index.php?action=join_group" style="display:inline">
                             <input type="hidden" name="group_id" value="<?= $g['id'] ?>">
-                            <button type="submit" class="btn-small">Join</button>
+                            <button type="submit" class="btn-small">پیوستن</button>
                         </form>
                     <?php endif; ?>
                 </div>
             </div>
             <?php endforeach; ?>
             <?php if (!$hasChannels): ?>
-                <p class="empty-message">No channels yet. Create one!</p>
+                <p style="color:#888; text-align:center; padding:20px;">هنوز کانالی ساخته نشده است. اولین کانال را شما بسازید!</p>
             <?php endif; ?>
         </div>
         
-        <!-- All Groups Section -->
+        <!-- بخش همه گروه‌ها -->
         <div class="group-list-all">
-            <h3>All Groups</h3>
+            <h3>همه گروه‌ها</h3>
             <?php 
             $allGroups = $db->query("SELECT g.*, (SELECT COUNT(*) FROM group_members WHERE group_id=g.id) as member_count FROM groups g WHERE g.type='group' ORDER BY g.sort_order, g.name");
             $hasGroups = false;
             foreach ($allGroups as $g):
                 $hasGroups = true;
-                // Check membership
+                // بررسی عضویت
                 $check = $db->prepare("SELECT 1 FROM group_members WHERE user_id=? AND group_id=?");
                 $check->execute([$_SESSION['user_id'], $g['id']]);
                 $isMember = $check->fetch();
@@ -452,52 +451,52 @@ $currentGroup = isset($_GET['group']) ? (int)$_GET['group'] : 0;
             <div class="group-card">
                 <div>
                     <strong>📌 <?= htmlspecialchars($g['name']) ?></strong>
-                    <span class="badge">Group</span>
-                    <span class="member-count"><?= $g['member_count'] ?> members</span>
+                    <span class="badge">گروه</span>
+                    <span class="member-count"><?= $g['member_count'] ?> عضو</span>
                 </div>
                 <div>
                     <?php if ($isMember): ?>
                         <form method="post" action="index.php?action=leave_group" style="display:inline">
                             <input type="hidden" name="group_id" value="<?= $g['id'] ?>">
-                            <button type="submit" class="btn-small btn-danger">Leave</button>
+                            <button type="submit" class="btn-small btn-danger">خروج</button>
                         </form>
-                        <a href="index.php?group=<?= $g['id'] ?>" class="btn-small">Enter</a>
+                        <a href="index.php?group=<?= $g['id'] ?>" class="btn-small">ورود</a>
                     <?php else: ?>
                         <form method="post" action="index.php?action=join_group" style="display:inline">
                             <input type="hidden" name="group_id" value="<?= $g['id'] ?>">
-                            <button type="submit" class="btn-small">Join</button>
+                            <button type="submit" class="btn-small">پیوستن</button>
                         </form>
                     <?php endif; ?>
                 </div>
             </div>
             <?php endforeach; ?>
             <?php if (!$hasGroups): ?>
-                <p class="empty-message">No groups yet. Create one!</p>
+                <p style="color:#888; text-align:center; padding:20px;">هنوز گروهی ساخته نشده است. اولین گروه را شما بسازید!</p>
             <?php endif; ?>
         </div>
     </div>
 
 <?php elseif ($action === 'admin' && isAdmin()): ?>
     <div class="admin-page">
-        <h2>Admin Panel</h2>
+        <h2>پنل مدیریت</h2>
         <?php if ($response['error']): ?><div class="error"><?= $response['error'] ?></div><?php endif; ?>
         <?php if (isset($response['success'])): ?><div class="success"><?= $response['success'] ?></div><?php endif; ?>
         
         <div class="admin-section">
-            <h3>Site Settings</h3>
+            <h3>تنظیمات سایت</h3>
             <form method="post" action="index.php?action=admin_update_settings">
-                <label>Max Upload Size (Bytes) - Current: <?= number_format((int)getSetting('max_upload_size')) ?> bytes</label>
+                <label>حداکثر حجم آپلود (بر حسب بایت) - فعلی: <?= number_format((int)getSetting('max_upload_size')) ?> بایت</label>
                 <input type="number" name="max_upload_size" value="<?= (int)getSetting('max_upload_size') ?>" min="1" max="104857600">
                 <label>
                     <input type="checkbox" name="allow_registration" value="1" <?= getSetting('allow_registration') === '1' ? 'checked' : '' ?>>
-                    Enable Registration
+                    فعال بودن ثبت نام
                 </label>
-                <button type="submit">Save Settings</button>
+                <button type="submit">ذخیره تنظیمات</button>
             </form>
         </div>
         
         <div class="admin-section">
-            <h3>Users</h3>
+            <h3>کاربران</h3>
             <div class="admin-list">
                 <?php 
                 $users = $db->query("SELECT id, username, display_name, role FROM users ORDER BY id");
@@ -508,15 +507,15 @@ $currentGroup = isset($_GET['group']) ? (int)$_GET['group'] : 0;
                         <form method="post" action="index.php?action=admin_edit_user" style="display:inline">
                             <input type="hidden" name="user_id" value="<?= $u['id'] ?>">
                             <select name="role">
-                                <option value="user" <?= $u['role']==='user'?'selected':'' ?>>User</option>
-                                <option value="admin" <?= $u['role']==='admin'?'selected':'' ?>>Admin</option>
+                                <option value="user" <?= $u['role']==='user'?'selected':'' ?>>کاربر</option>
+                                <option value="admin" <?= $u['role']==='admin'?'selected':'' ?>>ادمین</option>
                             </select>
-                            <button type="submit" class="btn-small">Change Role</button>
+                            <button type="submit" class="btn-small">تغییر نقش</button>
                         </form>
                         <?php if ($u['id'] !== (int)$_SESSION['user_id']): ?>
-                        <form method="post" action="index.php?action=admin_delete_user" style="display:inline" onsubmit="return confirm('Delete this user?')">
+                        <form method="post" action="index.php?action=admin_delete_user" style="display:inline" onsubmit="return confirm('حذف شود؟')">
                             <input type="hidden" name="user_id" value="<?= $u['id'] ?>">
-                            <button type="submit" class="btn-small btn-danger">Delete</button>
+                            <button type="submit" class="btn-small btn-danger">حذف</button>
                         </form>
                         <?php endif; ?>
                     </div>
@@ -526,7 +525,7 @@ $currentGroup = isset($_GET['group']) ? (int)$_GET['group'] : 0;
         </div>
         
         <div class="admin-section">
-            <h3>Groups & Channels</h3>
+            <h3>گروه‌ها و کانال‌ها</h3>
             <div class="admin-list">
                 <?php 
                 $groups = $db->query("SELECT * FROM groups ORDER BY type DESC, sort_order, name");
@@ -534,14 +533,14 @@ $currentGroup = isset($_GET['group']) ? (int)$_GET['group'] : 0;
                 <div class="admin-item">
                     <form method="post" action="index.php?action=admin_edit_group" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
                         <input type="hidden" name="group_id" value="<?= $g['id'] ?>">
-                        <span class="group-type-badge"><?= $g['type'] === 'channel' ? '#' : '📌' ?></span>
+                        <span><?= $g['type'] === 'channel' ? '#' : '📌' ?></span>
                         <input type="text" name="name" value="<?= htmlspecialchars($g['name']) ?>" style="width:200px">
-                        <input type="number" name="sort_order" value="<?= $g['sort_order'] ?>" style="width:60px" placeholder="Sort Order">
-                        <button type="submit" class="btn-small">Save</button>
+                        <input type="number" name="sort_order" value="<?= $g['sort_order'] ?>" style="width:60px" placeholder="ترتیب">
+                        <button type="submit" class="btn-small">ذخیره</button>
                     </form>
-                    <form method="post" action="index.php?action=admin_delete_group" style="display:inline" onsubmit="return confirm('Delete this group?')">
+                    <form method="post" action="index.php?action=admin_delete_group" style="display:inline" onsubmit="return confirm('حذف شود؟')">
                         <input type="hidden" name="group_id" value="<?= $g['id'] ?>">
-                        <button type="submit" class="btn-small btn-danger">Delete</button>
+                        <button type="submit" class="btn-small btn-danger">حذف</button>
                     </form>
                 </div>
                 <?php endforeach; ?>
@@ -557,10 +556,19 @@ $currentGroup = isset($_GET['group']) ? (int)$_GET['group'] : 0;
             $msgs = $db->prepare("SELECT m.*, u.display_name as uname, u.avatar as uavatar FROM messages m JOIN users u ON m.user_id=u.id WHERE m.group_id=? ORDER BY m.created_at ASC LIMIT 200");
             $msgs->execute([$currentGroup]);
             foreach ($msgs as $msg):
-                // Global date formatting
+                /* START JALALI CONVERSION */
+                $useJalali = true;
                 $dt = new DateTime($msg['created_at'] ?? 'now', new DateTimeZone('UTC'));
-                $dt->setTimezone(new DateTimeZone('UTC'));
-                $dateTime = $dt->format('Y-m-d H:i:s');
+                if ($useJalali && class_exists('IntlDateFormatter')) {
+                    $cal = IntlCalendar::createInstance('GMT+03:30', 'fa_IR@calendar=persian');
+                    $cal->setTime($dt->getTimestamp() * 1000);
+                    $fmt = new IntlDateFormatter('fa_IR', -1, -1, 'GMT+03:30', $cal, 'yyyy/MM/dd HH:mm');
+                    $dateTime = $fmt->format($cal);
+                } else {
+                    $dt->setTimezone(new DateTimeZone('Asia/Tehran'));
+                    $dateTime = $dt->format('Y/m/d H:i');
+                }
+                /* END JALALI CONVERSION */
                 $isOwn = $msg['user_id'] == $_SESSION['user_id'];
             ?>
             <div class="message <?= $isOwn ? 'own' : '' ?>">
@@ -584,7 +592,7 @@ $currentGroup = isset($_GET['group']) ? (int)$_GET['group'] : 0;
                                 <span class="file-icon">📎</span>
                                 <span class="file-name"><?= htmlspecialchars($msg['file_name']) ?></span>
                                 <span class="file-size">(<?= round($msg['file_size']/1024, 1) ?> KB)</span>
-                                <a href="uploads/<?= htmlspecialchars($msg['file_path']) ?>" download class="btn-small">Download</a>
+                                <a href="uploads/<?= htmlspecialchars($msg['file_path']) ?>" download class="btn-small">دانلود</a>
                             </div>
                         <?php endif; ?>
                     </div>
@@ -603,9 +611,7 @@ $currentGroup = isset($_GET['group']) ? (int)$_GET['group'] : 0;
         $grpCheck->execute([$currentGroup]);
         $grp = $grpCheck->fetch();
         
-        // Check if user can send messages
-        // For channels: only creator or admin can send
-        // For groups: all members can send
+        // تغییر: در کانال فقط سازنده و ادمین می‌توانند پیام بفرستند
         $isCreator = ($grp && $grp['creator_id'] == $_SESSION['user_id']);
         $isAdminUser = isAdmin();
         if ($grp && $grp['type'] === 'channel') {
@@ -618,26 +624,26 @@ $currentGroup = isset($_GET['group']) ? (int)$_GET['group'] : 0;
         <form method="post" action="index.php?action=send_message" enctype="multipart/form-data" class="message-form">
             <input type="hidden" name="group_id" value="<?= $currentGroup ?>">
             <div class="input-group">
-                <textarea name="content" id="msg-input" placeholder="Type your message..." autocomplete="off" rows="3"></textarea>
+                <textarea name="content" id="msg-input" placeholder="پیام خود را بنویسید..." autocomplete="off" rows="3"></textarea>
                 <label class="file-label">
                     📎
                     <input type="file" name="file" onchange="updateFileName(this)" style="display:none">
                 </label>
-                <button type="submit">Send</button>
+                <button type="submit">ارسال</button>
             </div>
             <div id="file-name-display" style="font-size:0.8em;padding:4px;"></div>
         </form>
         <?php else: ?>
-            <p style="text-align:center;padding:10px;color:#888;">This channel is read-only. Only the creator and admins can send messages.</p>
+            <p style="text-align:center;padding:10px;color:#888;">این کانال فقط خواندنی است. فقط سازنده کانال و ادمین‌ها می‌توانند پیام بفرستند.</p>
         <?php endif; endif; ?>
     </div>
 
 <?php else: ?>
     <!-- Home page -->
     <div class="home-page">
-        <h2>Welcome to the Chat</h2>
-        <p>Select a group from the sidebar or create a new group.</p>
-        <a href="index.php?action=groups" class="btn">View Groups</a>
+        <h2>به چت خوش آمدید</h2>
+        <p>یک گروه را از نوار کناری انتخاب کنید یا گروه جدید بسازید.</p>
+        <a href="index.php?action=groups" class="btn">مشاهده گروه‌ها</a>
     </div>
 <?php endif; ?>
 
