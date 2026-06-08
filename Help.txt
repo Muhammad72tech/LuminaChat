@@ -4,6 +4,8 @@ LuminaChat
 
 
 PHP version: +8
+for local host active extension=pdo_sqlite & extension=sqlite3 at php.ini
+
 
 user: admim
 password: admin123
