@@ -6,12 +6,6 @@
 
 <p style="text-align:center;width:100%;"><img src="/art/preview.png" alt="LuminaChat PHP"></p>
 
-<p align="center">
-<a href="https://github.com/laravel/telescope/actions"><img src="https://poser.pugx.org/munafio/chatify/v/stable?style=flat-square" alt="Build Status"></a>
-<a href="https://packagist.org/packages/munafio/chatify"><img src="https://poser.pugx.org/munafio/chatify/downloads?style=flat-square" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/munafio/chatify"><img src="https://poser.pugx.org/munafio/chatify/license?style=flat-square" alt="License"></a>
-</p>
-
 بدون نیاز به نصب، بدون نیاز به MySQL و بدون نیاز به پیکربندی پیچیده؛ کافی است فایل‌های پروژه را روی هاست، سرور لینوکس، VPS یا شبکه محلی خود استخراج کنید و بلافاصله ارتباط را آغاز نمایید.
 
 ## کلیدواژه‌ها
